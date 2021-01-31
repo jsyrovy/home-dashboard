@@ -4,7 +4,7 @@
 
 ### URL
 
-`https://jsyrovy.github.io/home-dashboard/?appid={appid}&lang={lang}&units={units}&q={prague,cz}`
+`https://jsyrovy.github.io/home-dashboard/?appid={appid}&lang={lang}&units={units}&q={q}`
 
 ### Parameters
 
