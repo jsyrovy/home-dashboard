@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home Dashboard</title>
+    <meta name="author" content="Jiri Syrovy" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Roboto&display=swap");
+
+      html {
+        height: 100%;
+      }
+
+      body {
+        height: 100%;
+        background-color: #121212;
+        color: rgba(255, 255, 255, 0.87);
+        font-family: "Roboto", sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+      }
+
+      div {
+        text-align: center;
+      }
+
+      .clock {
+        font-size: 16rem;
+        text-align: center;
+      }
+
+      .weather {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+      }
+
+      .weather__item {
+        margin: 0.2rem 0;
+      }
+
+      .weather__item--temp {
+        font-size: 6rem;
+        margin: 0 1rem;
+      }
+
+      .weather__item--smaller {
+        font-size: 2rem;
+      }
+
+      .weather__item--darker {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      @media (min-width: 80rem) {
+        .clock {
+          font-size: 18rem;
+        }
+      }
+
+      @media (min-width: 64rem) and (orientation: landscape) {
+        body {
+          flex-direction: row;
+        }
+
+        .clock {
+          width: 60%;
+        }
+
+        .weather {
+          width: 40%;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="clock" class="clock"></div>
+    <div class="weather">
+      <div id="icon"></div>
+      <div>
+        <span id="temp" class="weather__item weather__item--temp"></span>
+        <span
+          id="feels-like"
+          class="weather__item weather__item--temp weather__item--darker"
+        ></span>
+      </div>
+      <div id="description" class="weather__item"></div>
+      <div id="precipitation" class="weather__item"></div>
+      <div id="wind" class="weather__item"></div>
+      <div
+        id="place"
+        class="weather__item weather__item--smaller weather__item--darker"
+      ></div>
+      <div
+        id="dt"
+        class="weather__item weather__item--smaller weather__item--darker"
+      ></div>
+    </div>
+
+    <script>
+      const params = getParams();
+      updateClock();
+      updateWeather();
+
+      function getParams() {
+        const metric = "metric";
+        const appidKey = "appid";
+        const langKey = "lang";
+        const unitsKey = "units";
+        const qKey = "q";
+
+        const appid =
+          getQueryStringValue(appidKey) === ""
+            ? ""
+            : getQueryStringValue(appidKey);
+        const lang =
+          getQueryStringValue(langKey) === ""
+            ? "cz"
+            : getQueryStringValue(langKey);
+        const units =
+          getQueryStringValue(unitsKey) === ""
+            ? metric
+            : getQueryStringValue(unitsKey);
+        const q =
+          getQueryStringValue(qKey) === ""
+            ? "pardubice,cz"
+            : getQueryStringValue(qKey);
+
+        return {
+          data: { appid: appid, lang: lang, units: units, q: q },
+          windUnit: units === metric ? "m/s" : "mph",
+        };
+      }
+
+      function getQueryStringValue(key) {
+        return decodeURIComponent(
+          window.location.search.replace(
+            new RegExp(
+              "^(?:.*[&\\?]" +
+                encodeURIComponent(key).replace(/[\.\+\*]/g, "\\$&") +
+                "(?:\\=([^&]*))?)?.*$",
+              "i"
+            ),
+            "$1"
+          )
+        );
+      }
+
+      function updateClock() {
+        const date = new Date();
+        const hours = date.getHours();
+        const minutes = date.getMinutes();
+
+        document.getElementById("clock").innerHTML =
+          hours + ":" + (minutes < 10 ? "0" + minutes : minutes);
+
+        setTimeout(updateClock, 1000);
+      }
+
+      function updateWeather() {
+        if (params.data.appid === "") {
+          alert("Appid parameter is mandatory.");
+          return;
+        }
+
+        $.ajax({
+          url: "http://api.openweathermap.org/data/2.5/weather",
+          data: params.data,
+          dataType: "json",
+          method: "get",
+          success: function (response) {
+            $("#icon").html(
+              $("<img>").attr(
+                "src",
+                "http://openweathermap.org/img/wn/" +
+                  response.weather[0].icon +
+                  "@4x.png"
+              )
+            );
+            $("#temp").html(Math.round(response.main.temp) + "&deg;");
+            $("#feels-like").html(
+              Math.round(response.main.feels_like) + "&deg;"
+            );
+            $("#description").text(response.weather[0].description);
+            $("#description").text(response.weather[0].description);
+            $("#precipitation").text(getPrecipitation(response) + " mm");
+            $("#wind").text(response.wind.speed + " " + params.windUnit);
+            $("#place").text(response.name);
+            $("#dt").text(
+              new Date(response.dt * 1000)
+                .toISOString()
+                .replace(/T/, " ")
+                .replace(/\..+/, "")
+            );
+          },
+        });
+
+        setTimeout(updateWeather, 300000);
+      }
+
+      function getPrecipitation(data) {
+        const snow = "snow";
+        const rain = "rain";
+        const shortTerm = "1h";
+        const longTerm = "3h";
+
+        if (data.hasOwnProperty(snow) && data.snow.hasOwnProperty(shortTerm)) {
+          return data.snow[shortTerm];
+        }
+
+        if (data.hasOwnProperty(snow) && data.snow.hasOwnProperty(longTerm)) {
+          return data.snow[longTerm];
+        }
+
+        if (data.hasOwnProperty(rain) && data.rain.hasOwnProperty(shortTerm)) {
+          return data.rain[shortTerm];
+        }
+
+        if (data.hasOwnProperty(rain) && data.rain.hasOwnProperty(longTerm)) {
+          return data.rain[longTerm];
+        }
+
+        return 0;
+      }
+    </script>
+  </body>
+</html>
